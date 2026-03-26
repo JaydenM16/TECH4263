@@ -2,8 +2,6 @@ using EquipmentAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -20,33 +18,52 @@ app.UseHttpsRedirection();
 
 var equipmentList = new List<Equipment>();
 
-app.MapPost("/createequipment", (string name, string category, string status, string location) => 
+app.MapPost("/equipments", (CreateEquipmentDto dto) => 
 {
-    var equipment = new Equipment(name, category, status, location);
+    var equipment = new Equipment(dto.Name, dto.Category, dto.Status, dto.Location);
 
     equipmentList.Add(equipment);
 
-    return Results.Created($"/createequipment/{equipment.Id}", equipment);
+    return Results.Created($"/equipments/{equipment.Id}", new EquipmentResponseDto
+    {
+        Id = equipment.Id,
+        Name = equipment.Name,
+        Status = equipment.Status,
+        Location = equipment.Location,
+    });
 })
    .WithName("CreateEquipment")
    .WithOpenApi();
 
 
-app.MapGet("/getequipments", () => 
+app.MapGet("/equipments", () => 
 {
-    return Results.Ok(equipmentList);
+    var result = equipmentList.Select(eq => new EquipmentResponseDto
+    {
+        Id = eq.Id,
+        Name = eq.Name,
+        Status = eq.Status,
+        Location = eq.Location,
+    });
+    return Results.Ok(result);
 })
    .WithName("GetEquipments")
    .WithOpenApi();
 
-app.MapGet("/getequipment/{id}", (int id) => 
+app.MapGet("/equipments/{id:int:min(1)}", (int id) => 
 {
     var equipment = equipmentList.FirstOrDefault(e => e.Id == id);
     if (equipment == null)
     {
         return Results.NotFound();
     }
-    return Results.Ok(equipment);
+    return Results.Ok(new EquipmentResponseDto
+    {
+        Id = equipment.Id,
+        Name = equipment.Name,
+        Status = equipment.Status,
+        Location = equipment.Location,
+    });
 })
    .WithName("GetEquipmentById")
    .WithOpenApi();
