@@ -8,11 +8,12 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+//if (app.Environment.IsDevelopment())
+//{
+    
+//}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
@@ -28,6 +29,7 @@ app.MapPost("/equipments", (CreateEquipmentDto dto) =>
     {
         Id = equipment.Id,
         Name = equipment.Name,
+        Category = equipment.Category,
         Status = equipment.Status,
         Location = equipment.Location,
     });
@@ -42,6 +44,7 @@ app.MapGet("/equipments", () =>
     {
         Id = eq.Id,
         Name = eq.Name,
+        Category = eq.Category,
         Status = eq.Status,
         Location = eq.Location,
     });
@@ -61,6 +64,7 @@ app.MapGet("/equipments/{id:int:min(1)}", (int id) =>
     {
         Id = equipment.Id,
         Name = equipment.Name,
+        Category = equipment.Category,
         Status = equipment.Status,
         Location = equipment.Location,
     });
