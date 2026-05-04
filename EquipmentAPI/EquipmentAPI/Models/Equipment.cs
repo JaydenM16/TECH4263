@@ -1,8 +1,10 @@
-﻿namespace EquipmentAPI.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace EquipmentAPI.Models
 {
     public class Equipment
     {
-        private static int _nextId = 1;
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string Category { get; set; } = "";
@@ -11,7 +13,6 @@
 
         public Equipment(string name, string category, string status, string location)
         {
-            Id = _nextId++;
             Name = name;
             Category = category;
             Status = status;

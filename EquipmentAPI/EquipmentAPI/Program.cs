@@ -1,10 +1,16 @@
+using EquipmentAPI.Data;
 using EquipmentAPI.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using System.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -17,84 +23,56 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 
-app.MapPost("/equipments", async (CreateEquipmentDto dto) =>
+app.MapPost("/equipments", async (CreateEquipmentDto dto, AppDbContext context) =>
 {
-using var connection = new SqlConnection(connectionString);
-await connection.OpenAsync();
 
-using var command = new SqlCommand(
-    @"INSERT INTO Equipments (Name, Category, Status, Location)
-            OUTPUT INSERTED.Id
-            VALUES (@Name, @Category, @Status, @Location)", connection);
+    var equipment = new Equipment(dto.Name, dto.Category, dto.Status, dto.Location);
 
-command.Parameters.AddWithValue("@Name", dto.Name);
-command.Parameters.AddWithValue("@Category", dto.Category);
-command.Parameters.AddWithValue("@Status", dto.Status);
-command.Parameters.AddWithValue("@Location", dto.Location);
+    context.Equipments.Add(equipment);
+    await context.SaveChangesAsync();
 
-var newId = (int)(await command.ExecuteScalarAsync())!;
-
-    return Results.Created($"/equipments/{newId}", new EquipmentResponseDto
+    return Results.Created($"/equipments/{equipment.Id}", new EquipmentResponseDto
     {
-        Id = newId,
-        Name = dto.Name,
-        Category = dto.Category,
-        Status = dto.Status,
-        Location = dto.Location
+        Id = equipment.Id,
+        Name = equipment.Name,
+        Category = equipment.Category,
+        Status = equipment.Status,
+        Location = equipment.Location,
     });
 }).WithName("CreateEquipment").WithOpenApi();
 
 
-app.MapGet("/equipments", async () => 
+app.MapGet("/equipments", async (AppDbContext context) => 
 {
-    var equipment = new List <EquipmentResponseDto> ();
 
-    using var connection = new SqlConnection (connectionString);
-    await connection.OpenAsync();
+    var equipments = await context.Equipments.ToListAsync();
 
-    using var command = new SqlCommand("SELECT Id, Name, Category, Status, Location FROM Equipments", connection);
-    using var reader = await command.ExecuteReaderAsync();
-
-    while (await reader.ReadAsync())
+    return Results.Ok(equipments.Select(e => new EquipmentResponseDto
     {
-        equipment.Add(new EquipmentResponseDto
-        {
-            Id = reader.GetInt32(reader.GetOrdinal("Id")),
-            Name = reader.GetString(reader.GetOrdinal("Name")),
-            Category = reader.GetString(reader.GetOrdinal("Category")),
-            Status = reader.GetString(reader.GetOrdinal("Status")),
-            Location = reader.GetString(reader.GetOrdinal("Location"))
-        });
-    }
-    return Results.Ok(equipment);
-
+        Id = e.Id,
+        Name = e.Name,
+        Category = e.Category,
+        Status = e.Status,
+        Location = e.Location,
+    }));
 }).WithName("GetEquipments").WithOpenApi();
 
-app.MapGet("/equipments/{id:int:min(1)}", async (int id) => 
+app.MapGet("/equipments/{id:int:min(1)}", async (int id, AppDbContext context) => 
 {
-    using var connection = new SqlConnection(connectionString);
-    await connection.OpenAsync();
+    var equipment = await context.Equipments.FindAsync(id);
 
-    using var command = new SqlCommand(
-        "SELECT Id, Name, Category, Status, Location FROM Equipments WHERE Id = @Id", connection);
-
-    command.Parameters.AddWithValue("@Id", id);
-
-    using var reader = await command.ExecuteReaderAsync();
-
-    if (!await reader.ReadAsync())
+    if (equipment is null)
         return Results.NotFound();
 
     return Results.Ok(new EquipmentResponseDto
     {
-        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-        Name = reader.GetString(reader.GetOrdinal("Name")),
-        Category = reader.GetString(reader.GetOrdinal("Category")),
-        Status = reader.GetString(reader.GetOrdinal("Status")),
-        Location = reader.GetString(reader.GetOrdinal("Location")),
+        Id = equipment.Id,
+        Name = equipment.Name,
+        Category = equipment.Category,
+        Status = equipment.Status,
+        Location = equipment.Location,
     });
 }).WithName("GetEquipmentById").WithOpenApi();
 
