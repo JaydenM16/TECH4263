@@ -1,3 +1,4 @@
+using EquipmentAPI.Auth;
 using EquipmentAPI.Data;
 using EquipmentAPI.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -7,10 +8,39 @@ using System.Data.SqlClient;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("basic", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "basic",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter your username and password"
+    });
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id   = "basic"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddAuthentication("BasicAuth")
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthHandler>("BasicAuth", null);
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -23,6 +53,8 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
 
 app.MapPost("/equipments", async (CreateEquipmentDto dto, AppDbContext context) =>
@@ -41,7 +73,7 @@ app.MapPost("/equipments", async (CreateEquipmentDto dto, AppDbContext context) 
         Status = equipment.Status,
         Location = equipment.Location,
     });
-}).WithName("CreateEquipment").WithOpenApi();
+}).WithName("CreateEquipment").WithOpenApi().RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 
 app.MapGet("/equipments", async (AppDbContext context) => 
@@ -57,7 +89,7 @@ app.MapGet("/equipments", async (AppDbContext context) =>
         Status = e.Status,
         Location = e.Location,
     }));
-}).WithName("GetEquipments").WithOpenApi();
+}).WithName("GetEquipments").WithOpenApi().RequireAuthorization();
 
 app.MapGet("/equipments/{id:int:min(1)}", async (int id, AppDbContext context) => 
 {
@@ -74,7 +106,7 @@ app.MapGet("/equipments/{id:int:min(1)}", async (int id, AppDbContext context) =
         Status = equipment.Status,
         Location = equipment.Location,
     });
-}).WithName("GetEquipmentById").WithOpenApi();
+}).WithName("GetEquipmentById").WithOpenApi().RequireAuthorization();
 
 
 app.Run();

@@ -10,5 +10,6 @@ namespace EquipmentAPI.Data
         { 
         }
         public DbSet<Equipment> Equipments { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }
